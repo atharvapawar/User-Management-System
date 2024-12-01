@@ -1,17 +1,24 @@
-<?php session_start();
+<?php
+session_start();
 include_once('includes/config.php');
+
 // Code for login 
 if (isset($_POST['login'])) {
     $password = $_POST['password'];
-    $dec_password = $password;
     $useremail = $_POST['uemail'];
-    $ret = mysqli_query($con, "SELECT id,fname FROM users WHERE email='$useremail' and password='$dec_password'");
-    $num = mysqli_fetch_array($ret);
-    if ($num > 0) {
 
+    // Use prepared statements for security
+    $stmt = $con->prepare("SELECT id, fname, password FROM users WHERE email = ?");
+    $stmt->bind_param("s", $useremail);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $num = $result->fetch_assoc();
+
+    if ($num && password_verify($password, $num['password'])) { // Check if password matches
         $_SESSION['id'] = $num['id'];
         $_SESSION['name'] = $num['fname'];
         header("location:welcome.php");
+        exit();
     } else {
         echo "<script>alert('Invalid username or password');</script>";
     }

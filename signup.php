@@ -2,7 +2,6 @@
 session_start();
 require_once('includes/config.php');
 
-// Code for Registration
 if (isset($_POST['submit'])) {
     $fname = $_POST['fname'];
     $lname = $_POST['lname'];
@@ -10,16 +9,13 @@ if (isset($_POST['submit'])) {
     $password = $_POST['password'];
     $contact = $_POST['contact'];
 
-    // Check if email already exists
     $sql = mysqli_query($con, "SELECT id FROM users WHERE email='$email'");
     $row = mysqli_num_rows($sql);
     if ($row > 0) {
         echo "<script>alert('Email id already exist with another account. Please try with other email id');</script>";
     } else {
-        // Hash password before storing
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-        // Use prepared statements to prevent SQL injection
         $stmt = $con->prepare("INSERT INTO users (fname, lname, email, password, contactno) VALUES (?, ?, ?, ?, ?)");
         $stmt->bind_param("sssss", $fname, $lname, $email, $hashed_password, $contact);
 

@@ -1,27 +1,36 @@
-<?php session_start(); 
+<?php
+session_start();
 include_once('../includes/config.php');
-// Code for login 
-if(isset($_POST['login']))
-{
-  $adminusername=$_POST['username'];
-  $pass=md5($_POST['password']);
-$ret=mysqli_query($con,"SELECT * FROM admin WHERE username='$adminusername' and password='$pass'");
-$num=mysqli_fetch_array($ret);
-if($num>0)
-{
-$extra="dashboard.php";
-$_SESSION['login']=$_POST['username'];
-$_SESSION['adminid']=$num['id'];
-echo "<script>window.location.href='".$extra."'</script>";
-exit();
-}
-else
-{
-echo "<script>alert('Invalid username or password');</script>";
-$extra="index.php";
-echo "<script>window.location.href='".$extra."'</script>";
-exit();
-}
+
+if (isset($_POST['login'])) {
+    $adminusername = mysqli_real_escape_string($con, $_POST['username']);
+    $pass = $_POST['password']; 
+
+    $stmt = $con->prepare("SELECT id, password FROM admin WHERE username = ?");
+    $stmt->bind_param("s", $adminusername);
+    $stmt->execute();
+    $stmt->store_result();
+    $stmt->bind_result($admin_id, $hashed_password);
+
+    if ($stmt->num_rows > 0) {
+        $stmt->fetch();
+
+        if (password_verify($pass, $hashed_password)) {
+            $_SESSION['login'] = $_POST['username'];
+            $_SESSION['adminid'] = $admin_id;
+            echo "<script>window.location.href='dashboard.php';</script>";
+            exit();
+        } else {
+            echo "<script>alert('Invalid username or password');</script>";
+            echo "<script>window.location.href='index.php';</script>";
+            exit();
+        }
+    } else {
+        echo "<script>alert('Invalid username or password');</script>";
+        echo "<script>window.location.href='index.php';</script>";
+        exit();
+    }
+    $stmt->close();
 }
 ?>
 
