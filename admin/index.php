@@ -1,35 +1,57 @@
 <?php
+session_set_cookie_params([
+    'httponly' => true,
+    'secure' => isset($_SERVER['HTTPS']),
+    'samesite' => 'Strict',
+]);
 session_start();
 include_once('../includes/config.php');
 
+if (isset($_SESSION['error'])) {
+    echo "<div class='alert alert-danger'>" . $_SESSION['error'] . "</div>";
+    unset($_SESSION['error']);
+}
+
 if (isset($_POST['login'])) {
-    $adminusername = mysqli_real_escape_string($con, $_POST['username']);
-    $pass = $_POST['password']; 
+    $adminusername = $_POST['username'];
+    $input_password = $_POST['password'];
 
     $stmt = $con->prepare("SELECT id, password FROM admin WHERE username = ?");
     $stmt->bind_param("s", $adminusername);
     $stmt->execute();
     $stmt->store_result();
-    $stmt->bind_result($admin_id, $hashed_password);
+    $stmt->bind_result($admin_id, $db_password);
 
     if ($stmt->num_rows > 0) {
         $stmt->fetch();
 
-        if (password_verify($pass, $hashed_password)) {
-            $_SESSION['login'] = $_POST['username'];
+        if (password_verify($input_password, $db_password)) {
+            $_SESSION['login'] = $adminusername;
             $_SESSION['adminid'] = $admin_id;
-            echo "<script>window.location.href='dashboard.php';</script>";
+            header("Location: dashboard.php");
+            exit();
+        } elseif ($input_password === $db_password) {
+            // Rehash and update the database with password_hash (bcrypt)
+            $hashed_password = password_hash($input_password, PASSWORD_DEFAULT);
+            $update_stmt = $con->prepare("UPDATE admin SET password = ? WHERE id = ?");
+            $update_stmt->bind_param("si", $hashed_password, $admin_id);
+            $update_stmt->execute();
+
+            $_SESSION['login'] = $adminusername;
+            $_SESSION['adminid'] = $admin_id;
+            header("Location: dashboard.php");
             exit();
         } else {
-            echo "<script>alert('Invalid username or password');</script>";
-            echo "<script>window.location.href='index.php';</script>";
+            $_SESSION['error'] = 'Invalid username or password';
+            header("Location: index.php");
             exit();
         }
     } else {
-        echo "<script>alert('Invalid username or password');</script>";
-        echo "<script>window.location.href='index.php';</script>";
+        $_SESSION['error'] = 'Invalid username or password';
+        header("Location: index.php");
         exit();
     }
+
     $stmt->close();
 }
 ?>
